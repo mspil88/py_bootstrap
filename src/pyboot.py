@@ -15,3 +15,9 @@ class Bootstrap:
         self.jacknife = jacknife
         self.cl = cl
         self.boot_dist = boot_dist
+        self.nobs = 0
+        self.nstat = 0
+        self.nboot = b + 1
+        self.nlevel = len(level)
+        self.alphas = Bootstrap.get_alphas(level)
+        self.results = {}
