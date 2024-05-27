@@ -19,5 +19,13 @@ class Bootstrap:
         self.nstat = 0
         self.nboot = b + 1
         self.nlevel = len(level)
-        self.alphas = Bootstrap.get_alphas(level)
+        self.alphas = Bootstrap._get_alphas(level)
         self.results = {}
+
+    @staticmethod
+    def _get_alphas(levels):
+        if isinstance(levels, list):
+            levels = np.array(levels)
+        return 1 - levels
+
+
