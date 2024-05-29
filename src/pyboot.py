@@ -28,4 +28,16 @@ class Bootstrap:
             levels = np.array(levels)
         return 1 - levels
 
+    def get_bootstrap(self, x, t0, statistic):
+        bootx = np.random.choice(x, self.nobs * self.B).reshape((self.B, self.nobs))
+
+        bootdist = np.zeros(self.nboot * self.nstat).reshape((self.nboot, self.nstat))
+        bootdist[0,] = t0
+        bootdist[1:self.nboot, ] = np.apply_along_axis(statistic, 1, bootx).T.reshape((self.nboot - 1, self.nstat))
+
+        bootse = np.apply_along_axis(np.std, 0, bootdist)
+
+        bootbias = np.apply_along_axis(np.mean, 0, bootdist) - t0
+
+        return bootdist, bootse, bootbias
 
