@@ -2,15 +2,16 @@ from typing import Callable, Optional, Union
 from inspect import isfunction
 import numpy as np
 import pandas as pd
+from scipy.stats import norm
 
 
 class Bootstrap:
-    def __init__(self, b: int = 9_999, level: Union[np.array, list] = [0.9, 0.95, 0.99],
+    def __init__(self, b: int = 9_999, levels: Union[np.array, list] = [0.9, 0.95, 0.99],
                  method: list = ["norm", "basic", "perc", "bca"], sdfun: Optional[Callable] = None,
                  sdrep: int = 99, jacknife: Optional[Callable] = None, cl: bool = False, boot_dist: bool = False):
         self.B = b
-        self.level = level
-        self.method= method
+        self.levels = levels
+        self.method = method
         self.sdfun = sdfun
         self.sdrep = sdrep
         self.jacknife = jacknife
@@ -19,16 +20,26 @@ class Bootstrap:
         self.nobs = 0
         self.nstat = 0
         self.nboot = b + 1
-        self.nlevel = len(level)
-        self.alphas = Bootstrap._get_alphas(level)
+        self.nlevels = len(levels)
+        self.alphas = Bootstrap._get_alphas(levels)
         self.results = {}
 
     @staticmethod
-    def _get_alphas(levels):
+    def _get_alphas(levels: list) -> np.array:
         if isinstance(levels, list):
             levels = np.array(levels)
         return 1 - levels
 
+    def _get_dimensions(self, t0: Union[int, float, np.array], varnames: Optional[list]) -> None:
+
+        try:
+            self.nstat = len(t0)
+        except TypeError:
+            self.nstat = 1
+
+        self.dims = [self.nlevels, 2, self.nstat]
+        self.dnames = [[f"{level*100}%" for level in self.levels],
+                       ["lower", "upper"], varnames]
     def get_bootstrap(self, x, t0, statistic):
         bootx = np.random.choice(x, self.nobs * self.B).reshape((self.B, self.nobs))
 
@@ -42,11 +53,23 @@ class Bootstrap:
 
         return bootdist, bootse, bootbias
 
+    def get_normal_interval(self, t0, bootse, bootbias, dims):
+        normal = np.zeros(len(self.dims) * 2).reshape((2, len(self.dims)))
+
+        for i in range(self.nstat):
+            # this will fail with nstat > 1, need to check this
+            normal[0] = t0[i] - bootbias[i] - norm.ppf(1 - self.alphas / 2) * bootse[i]
+            normal[1] = t0[i] - bootbias[i] - norm.ppf(self.alphas / 2) * bootse[i]
+
+        return normal
+
     def estimate(self, X: Union[np.array, np.ndarray, pd.Series, pd.DataFrame], statistic: Callable,
                  **statistic_kwargs: dict):
+        # placeholder to deal with varnames
+        varnames = None
         self.nobs = len(X)
         t0 = statistic(X, **statistic_kwargs)
+        self._get_dimensions(X, t0, varnames)
         bootdist, bootse, bootbias = self.get_bootstrap(X, t0, statistic)
 
         bootcov = np.cov(bootdist) if self.nstat > 1 else None
-
