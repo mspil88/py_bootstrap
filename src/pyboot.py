@@ -40,6 +40,13 @@ class Bootstrap:
         self.dims = [self.nlevels, 2, self.nstat]
         self.dnames = [[f"{level*100}%" for level in self.levels],
                        ["lower", "upper"], varnames]
+
+    def _make_jacknife(self, statistic, X):
+        if "bca" in self.method:
+            if not self.jackknife:
+                return statistic  # returns callable
+            else:
+                return self.jackknife(X)
     def get_bootstrap(self, x, t0, statistic):
         bootx = np.random.choice(x, self.nobs * self.B).reshape((self.B, self.nobs))
 
