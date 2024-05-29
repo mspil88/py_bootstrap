@@ -53,7 +53,7 @@ class Bootstrap:
 
         return bootdist, bootse, bootbias
 
-    def get_normal_interval(self, t0, bootse, bootbias, dims):
+    def get_normal_interval(self, t0, bootse, bootbias):
         normal = np.zeros(len(self.dims) * 2).reshape((2, len(self.dims)))
 
         for i in range(self.nstat):
@@ -63,6 +63,16 @@ class Bootstrap:
 
         return normal
 
+    def get_perc_interval(self, bootdist):
+        percent = np.zeros(len(self.dims) * 2).reshape((2, len(self.dims)))
+        probs = list(self.alphas / 2) + list(1 - self.alphas / 2)
+
+        for i in range(self.nstat):
+            quant = np.nanquantile(bootdist[:, i], probs)
+            percent[0] = quant[0:self.nlevel]
+            percent[1] = quant[self.nlevel: len(probs)]
+
+        return percent
     def estimate(self, X: Union[np.array, np.ndarray, pd.Series, pd.DataFrame], statistic: Callable,
                  **statistic_kwargs: dict):
         # placeholder to deal with varnames
