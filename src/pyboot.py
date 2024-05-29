@@ -8,13 +8,13 @@ from scipy.stats import norm
 class Bootstrap:
     def __init__(self, b: int = 9_999, levels: Union[np.array, list] = [0.9, 0.95, 0.99],
                  method: list = ["norm", "basic", "perc", "bca"], sdfun: Optional[Callable] = None,
-                 sdrep: int = 99, jacknife: Optional[Callable] = None, cl: bool = False, boot_dist: bool = False):
+                 sdrep: int = 99, jackknife: Optional[Callable] = None, cl: bool = False, boot_dist: bool = False):
         self.B = b
         self.levels = levels
         self.method = method
         self.sdfun = sdfun
         self.sdrep = sdrep
-        self.jacknife = jacknife
+        self.jackknife = jackknife
         self.cl = cl
         self.boot_dist = boot_dist
         self.nobs = 0
@@ -41,23 +41,25 @@ class Bootstrap:
         self.dnames = [[f"{level*100}%" for level in self.levels],
                        ["lower", "upper"], varnames]
 
-    def _make_jacknife(self, statistic, X):
+    def _make_jackknife(self, statistic, X):
         if "bca" in self.method:
             if not self.jackknife:
                 return statistic  # returns callable
             else:
                 return self.jackknife(X)
-    def get_bootstrap(self, x, t0, statistic):
+    def get_bootstrap(self, x, t0, statistic, **statistic_kwargs):
         bootx = np.random.choice(x, self.nobs * self.B).reshape((self.B, self.nobs))
 
         bootdist = np.zeros(self.nboot * self.nstat).reshape((self.nboot, self.nstat))
         bootdist[0,] = t0
-        bootdist[1:self.nboot, ] = np.apply_along_axis(statistic, 1, bootx).T.reshape((self.nboot - 1, self.nstat))
+
+        bootdist[1:self.nboot, ] = np.apply_along_axis(statistic, 1, bootx, **statistic_kwargs).reshape((self.nboot - 1, self.nstat))
 
         bootse = np.apply_along_axis(np.std, 0, bootdist)
 
         bootbias = np.apply_along_axis(np.mean, 0, bootdist) - t0
-
+        self.bootx = bootx
+        print(bootx)
         return bootdist, bootse, bootbias
 
     def get_normal_interval(self, t0, bootse, bootbias):
@@ -123,12 +125,15 @@ class Bootstrap:
         varnames = None
         self.nobs = len(X)
         t0 = statistic(X, **statistic_kwargs)
-        self._get_dimensions(X, t0, varnames)
-        bootdist, bootse, bootbias = self.get_bootstrap(X, t0, statistic)
+        t0 = np.array([t0]) if isinstance(t0, np.float64) else t0
+        self._get_dimensions(t0, varnames)
+        bootdist, bootse, bootbias = self.get_bootstrap(X, t0, statistic, **statistic_kwargs)
 
         bootcov = np.cov(bootdist) if self.nstat > 1 else None
 
-        jackknife = self.make_jackknife(X, statistic)
+        jackknife = self._make_jackknife(X, statistic)
 
         if "norm" in self.method:
-            normal = self.get_normal_interval(t0, bootse, bootbias, dims)
+            normal = self.get_normal_interval(t0, bootse, bootbias)
+
+        return normal
