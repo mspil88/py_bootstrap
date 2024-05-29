@@ -92,14 +92,14 @@ class Bootstrap:
 
         return basic
 
-    def get_bca_interval(self, x, bootdist, jackknife, t0):
+    def get_bca_interval(self, X, bootdist, jackknife, t0):
         bca = np.zeros(len(self.dims) * 2).reshape((2, len(self.dims)))
         z1 = norm.ppf(self.alphas / 2)
         z2 = norm.ppf(1 - self.alphas / 2)
         jackstat = np.zeros((self.nobs * self.nstat)).reshape((self.nobs, self.nstat))
 
-        for i in range(len(x)):
-            jackstat[i,] = jackknife(np.delete(x, i))
+        for i in range(len(X)):
+            jackstat[i,] = jackknife(np.delete(X, i))
 
         jackmean = np.mean(jackstat, axis=0)
         z0 = np.zeros(self.nstat)
@@ -127,3 +127,8 @@ class Bootstrap:
         bootdist, bootse, bootbias = self.get_bootstrap(X, t0, statistic)
 
         bootcov = np.cov(bootdist) if self.nstat > 1 else None
+
+        jackknife = self.make_jackknife(X, statistic)
+
+        if "norm" in self.method:
+            normal = self.get_normal_interval(t0, bootse, bootbias, dims)
