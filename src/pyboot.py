@@ -1,6 +1,7 @@
 from typing import Callable, Optional, Union
 from inspect import isfunction
 import numpy as np
+import pandas as pd
 
 
 class Bootstrap:
@@ -40,4 +41,12 @@ class Bootstrap:
         bootbias = np.apply_along_axis(np.mean, 0, bootdist) - t0
 
         return bootdist, bootse, bootbias
+
+    def estimate(self, X: Union[np.array, np.ndarray, pd.Series, pd.DataFrame], statistic: Callable,
+                 **statistic_kwargs: dict):
+        self.nobs = len(X)
+        t0 = statistic(X, **statistic_kwargs)
+        bootdist, bootse, bootbias = self.get_bootstrap(X, t0, statistic)
+
+        bootcov = np.cov(bootdist) if self.nstat > 1 else None
 
