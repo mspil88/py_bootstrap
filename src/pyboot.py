@@ -69,8 +69,8 @@ class Bootstrap:
 
         for i in range(self.nstat):
             quant = np.nanquantile(bootdist[:, i], probs)
-            percent[0] = quant[0:self.nlevel]
-            percent[1] = quant[self.nlevel: len(probs)]
+            percent[0] = quant[0:self.nlevels]
+            percent[1] = quant[self.nlevels: len(probs)]
 
         return percent
 
@@ -80,10 +80,36 @@ class Bootstrap:
 
         for i in range(self.nstat):
             quant = np.nanquantile(bootdist[:, i], probs)
-            basic[0] = 2 * t0[i] - quant[self.nlevel:len(probs)]
-            basic[1] = 2 * t0[i] - quant[0: self.nlevel]
+            basic[0] = 2 * t0[i] - quant[self.nlevels:len(probs)]
+            basic[1] = 2 * t0[i] - quant[0: self.nlevels]
 
         return basic
+
+    def get_bca_interval(self, x, bootdist, jackknife, t0):
+        bca = np.zeros(len(self.dims) * 2).reshape((2, len(self.dims)))
+        z1 = norm.ppf(self.alphas / 2)
+        z2 = norm.ppf(1 - self.alphas / 2)
+        jackstat = np.zeros((self.nobs * self.nstat)).reshape((self.nobs, self.nstat))
+
+        for i in range(len(x)):
+            jackstat[i,] = jackknife(np.delete(x, i))
+
+        jackmean = np.mean(jackstat, axis=0)
+        z0 = np.zeros(self.nstat)
+        acc = np.zeros(self.nstat)
+
+        for i in range(self.nstat):
+            z0[i] = norm.ppf(np.mean(bootdist[:, i] < t0, axis=0))
+            acc[i] = np.sum((jackmean[i] - jackstat[:, i]) ** 3) / (
+                        6 * np.sum((jackmean[i] - jackstat[:, i]) ** 2) ** (3 / 2))
+            a = norm.cdf(z0[i] + (z0[i] + z1) / (1 - acc[i] * (z0[i] + z1)))
+            b = norm.cdf(z0[i] + (z0[i] + z2) / (1 - acc[i] * (z0[i] + z2)))
+            probs = list(a) + list(b)
+            quant = np.nanquantile(bootdist[:, i], probs)
+            bca[0] = quant[0:self.nlevels]
+            bca[1] = quant[self.nlevels: len(probs)]
+
+        return bca
     def estimate(self, X: Union[np.array, np.ndarray, pd.Series, pd.DataFrame], statistic: Callable,
                  **statistic_kwargs: dict):
         # placeholder to deal with varnames
