@@ -73,6 +73,17 @@ class Bootstrap:
             percent[1] = quant[self.nlevel: len(probs)]
 
         return percent
+
+    def get_basic_interval(self, t0, bootdist):
+        basic = np.zeros(len(self.dims) * 2).reshape((2, len(self.dims)))
+        probs = list(self.alphas / 2) + list(1 - self.alphas / 2)
+
+        for i in range(self.nstat):
+            quant = np.nanquantile(bootdist[:, i], probs)
+            basic[0] = 2 * t0[i] - quant[self.nlevel:len(probs)]
+            basic[1] = 2 * t0[i] - quant[0: self.nlevel]
+
+        return basic
     def estimate(self, X: Union[np.array, np.ndarray, pd.Series, pd.DataFrame], statistic: Callable,
                  **statistic_kwargs: dict):
         # placeholder to deal with varnames
