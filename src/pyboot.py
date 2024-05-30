@@ -61,9 +61,12 @@ class Bootstrap:
 
         return bootdist, bootse, bootbias
 
+    def create_bootstrap_container(self):
+        return np.zeros(self.nstat*len(self.dims) * 2).reshape((self.nstat, 2, len(self.dims)))
+
     def get_normal_interval(self, t0, bootse, bootbias):
 
-        normal = np.zeros(self.nstat*len(self.dims) * 2).reshape((self.nstat, 2, len(self.dims)))
+        normal = self.create_bootstrap_container()
 
         for i in range(self.nstat):
             # this will fail with nstat > 1, need to check this
@@ -73,7 +76,7 @@ class Bootstrap:
         return normal
 
     def get_perc_interval(self, bootdist):
-        percent = np.zeros(len(self.dims) * 2).reshape((2, len(self.dims)))
+        percent = self.create_bootstrap_container()
         probs = list(self.alphas / 2) + list(1 - self.alphas / 2)
 
         for i in range(self.nstat):
@@ -84,7 +87,7 @@ class Bootstrap:
         return percent
 
     def get_basic_interval(self, t0, bootdist):
-        basic = np.zeros(len(self.dims) * 2).reshape((2, len(self.dims)))
+        basic = self.create_bootstrap_container()
         probs = list(self.alphas / 2) + list(1 - self.alphas / 2)
 
         for i in range(self.nstat):
@@ -95,7 +98,7 @@ class Bootstrap:
         return basic
 
     def get_bca_interval(self, X, bootdist, jackknife, t0):
-        bca = np.zeros(len(self.dims) * 2).reshape((2, len(self.dims)))
+        bca = self.create_bootstrap_container()
         z1 = norm.ppf(self.alphas / 2)
         z2 = norm.ppf(1 - self.alphas / 2)
         jackstat = np.zeros((self.nobs * self.nstat)).reshape((self.nobs, self.nstat))
