@@ -58,17 +58,17 @@ class Bootstrap:
         bootse = np.apply_along_axis(np.std, 0, bootdist)
 
         bootbias = np.apply_along_axis(np.mean, 0, bootdist) - t0
-        self.bootx = bootx
-        print(bootx)
+
         return bootdist, bootse, bootbias
 
     def get_normal_interval(self, t0, bootse, bootbias):
-        normal = np.zeros(len(self.dims) * 2).reshape((2, len(self.dims)))
+
+        normal = np.zeros(self.nstat*len(self.dims) * 2).reshape((self.nstat, 2, len(self.dims)))
 
         for i in range(self.nstat):
             # this will fail with nstat > 1, need to check this
-            normal[0] = t0[i] - bootbias[i] - norm.ppf(1 - self.alphas / 2) * bootse[i]
-            normal[1] = t0[i] - bootbias[i] - norm.ppf(self.alphas / 2) * bootse[i]
+            normal[i, 0] = t0[i] - bootbias[i] - norm.ppf(1 - self.alphas / 2) * bootse[i]
+            normal[i, 1] = t0[i] - bootbias[i] - norm.ppf(self.alphas / 2) * bootse[i]
 
         return normal
 
