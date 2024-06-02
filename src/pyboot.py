@@ -44,9 +44,9 @@ class Bootstrap:
     def _make_jackknife(self, statistic, X):
         if "bca" in self.method:
             if not self.jackknife:
-                return statistic  # returns callable
+                return statistic, False  # returns callable
             else:
-                return self.jackknife(X)
+                return self.jackknife(X), True
     def get_bootstrap(self, x, t0, statistic, **statistic_kwargs):
         bootx = np.random.choice(x, self.nobs * self.B).reshape((self.B, self.nobs))
 
@@ -67,9 +67,7 @@ class Bootstrap:
     def get_normal_interval(self, t0, bootse, bootbias):
 
         normal = self.create_bootstrap_container()
-
         for i in range(self.nstat):
-            # this will fail with nstat > 1, need to check this
             normal[i, 0] = t0[i] - bootbias[i] - norm.ppf(1 - self.alphas / 2) * bootse[i]
             normal[i, 1] = t0[i] - bootbias[i] - norm.ppf(self.alphas / 2) * bootse[i]
 
@@ -81,8 +79,8 @@ class Bootstrap:
 
         for i in range(self.nstat):
             quant = np.nanquantile(bootdist[:, i], probs)
-            percent[0] = quant[0:self.nlevels]
-            percent[1] = quant[self.nlevels: len(probs)]
+            percent[i, 0] = quant[0:self.nlevels]
+            percent[i, 1] = quant[self.nlevels: len(probs)]
 
         return percent
 
@@ -92,19 +90,24 @@ class Bootstrap:
 
         for i in range(self.nstat):
             quant = np.nanquantile(bootdist[:, i], probs)
-            basic[0] = 2 * t0[i] - quant[self.nlevels:len(probs)]
-            basic[1] = 2 * t0[i] - quant[0: self.nlevels]
+            basic[i, 0] = 2 * t0[i] - quant[self.nlevels:len(probs)]
+            basic[i, 1] = 2 * t0[i] - quant[0: self.nlevels]
 
         return basic
 
-    def get_bca_interval(self, X, bootdist, jackknife, t0):
+    def get_bca_interval(self, X, bootdist, statistic: Callable, statistic_kwargs: dict):
         bca = self.create_bootstrap_container()
         z1 = norm.ppf(self.alphas / 2)
         z2 = norm.ppf(1 - self.alphas / 2)
         jackstat = np.zeros((self.nobs * self.nstat)).reshape((self.nobs, self.nstat))
 
+        jackknife, custom_jackknife = self._make_jackknife(statistic, X)
+
         for i in range(len(X)):
-            jackstat[i,] = jackknife(np.delete(X, i))
+            if not custom_jackknife:
+                jackstat[i,] = jackknife(np.delete(X, i), **statistic_kwargs)
+            else:
+                jackstat[i,] = jackknife(np.delete(X, i), **statistic_kwargs)
 
         jackmean = np.mean(jackstat, axis=0)
         z0 = np.zeros(self.nstat)
@@ -118,8 +121,8 @@ class Bootstrap:
             b = norm.cdf(z0[i] + (z0[i] + z2) / (1 - acc[i] * (z0[i] + z2)))
             probs = list(a) + list(b)
             quant = np.nanquantile(bootdist[:, i], probs)
-            bca[0] = quant[0:self.nlevels]
-            bca[1] = quant[self.nlevels: len(probs)]
+            bca[i, 0] = quant[0:self.nlevels]
+            bca[i, 1] = quant[self.nlevels: len(probs)]
 
         return bca
     def estimate(self, X: Union[np.array, np.ndarray, pd.Series, pd.DataFrame], statistic: Callable,
@@ -134,9 +137,16 @@ class Bootstrap:
 
         bootcov = np.cov(bootdist) if self.nstat > 1 else None
 
-        jackknife = self._make_jackknife(X, statistic)
-
         if "norm" in self.method:
             normal = self.get_normal_interval(t0, bootse, bootbias)
 
-        return normal
+        if "perc" in self.method:
+            percent = self.get_perc_interval(bootdist)
+
+        if "basic" in self.method:
+            basic = self.get_basic_interval(t0, bootdist)
+
+        if "bca" in self.method:
+            bca = self.get_bca_interval(X, bootdist, statistic, statistic_kwargs)
+
+        return bca
