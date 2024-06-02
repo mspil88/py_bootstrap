@@ -114,7 +114,7 @@ class Bootstrap:
         acc = np.zeros(self.nstat)
 
         for i in range(self.nstat):
-            z0[i] = norm.ppf(np.mean(bootdist[:, i] < t0, axis=0))
+            z0[i] = norm.ppf(np.mean(bootdist[:, i] < t0[i], axis=0))
             acc[i] = np.sum((jackmean[i] - jackstat[:, i]) ** 3) / (
                         6 * np.sum((jackmean[i] - jackstat[:, i]) ** 2) ** (3 / 2))
             a = norm.cdf(z0[i] + (z0[i] + z1) / (1 - acc[i] * (z0[i] + z1)))
