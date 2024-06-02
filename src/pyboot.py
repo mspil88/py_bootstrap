@@ -95,7 +95,7 @@ class Bootstrap:
 
         return basic
 
-    def get_bca_interval(self, X, bootdist, statistic: Callable, statistic_kwargs: dict):
+    def get_bca_interval(self, X, bootdist, t0, statistic: Callable, statistic_kwargs: dict):
         bca = self.create_bootstrap_container()
         z1 = norm.ppf(self.alphas / 2)
         z2 = norm.ppf(1 - self.alphas / 2)
@@ -147,6 +147,6 @@ class Bootstrap:
             basic = self.get_basic_interval(t0, bootdist)
 
         if "bca" in self.method:
-            bca = self.get_bca_interval(X, bootdist, statistic, statistic_kwargs)
+            bca = self.get_bca_interval(X, bootdist, t0, statistic, statistic_kwargs)
 
         return bca
