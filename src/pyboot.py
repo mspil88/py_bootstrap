@@ -155,7 +155,7 @@ class Bootstrap:
         return method_result
 
     def estimate(self, X: Union[np.array, np.ndarray, pd.Series, pd.DataFrame], statistic: Callable,
-                 **statistic_kwargs: dict):
+                 varnames: list, **statistic_kwargs: dict):
         # placeholder to deal with varnames
         varnames = None
         self.nobs = len(X)
