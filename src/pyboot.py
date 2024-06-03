@@ -22,6 +22,7 @@ class Bootstrap:
         self.nboot = b + 1
         self.nlevels = len(levels)
         self.alphas = Bootstrap._get_alphas(levels)
+        self.probs = Bootstrap._get_probs(self.alphas)
         self.results = {}
 
     @staticmethod
@@ -29,6 +30,10 @@ class Bootstrap:
         if isinstance(levels, list):
             levels = np.array(levels)
         return 1 - levels
+
+    @staticmethod
+    def _get_probs(alphas: np.array) -> list:
+        return list(alphas / 2) + list(1 - alphas / 2)
 
     def _get_dimensions(self, t0: Union[int, float, np.array], varnames: Optional[list]) -> None:
 
@@ -75,22 +80,20 @@ class Bootstrap:
 
     def get_perc_interval(self, bootdist):
         percent = self.create_bootstrap_container()
-        probs = list(self.alphas / 2) + list(1 - self.alphas / 2)
 
         for i in range(self.nstat):
-            quant = np.nanquantile(bootdist[:, i], probs)
+            quant = np.nanquantile(bootdist[:, i], self.probs)
             percent[i, 0] = quant[0:self.nlevels]
-            percent[i, 1] = quant[self.nlevels: len(probs)]
+            percent[i, 1] = quant[self.nlevels: len(self.probs)]
 
         return percent
 
     def get_basic_interval(self, t0, bootdist):
         basic = self.create_bootstrap_container()
-        probs = list(self.alphas / 2) + list(1 - self.alphas / 2)
 
         for i in range(self.nstat):
-            quant = np.nanquantile(bootdist[:, i], probs)
-            basic[i, 0] = 2 * t0[i] - quant[self.nlevels:len(probs)]
+            quant = np.nanquantile(bootdist[:, i], self.probs)
+            basic[i, 0] = 2 * t0[i] - quant[self.nlevels:len(self.probs)]
             basic[i, 1] = 2 * t0[i] - quant[0: self.nlevels]
 
         return basic
