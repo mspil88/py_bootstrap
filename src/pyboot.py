@@ -22,7 +22,7 @@ class Bootstrap:
         self.nboot = b + 1
         self.nlevels = len(levels)
         self.alphas = Bootstrap._get_alphas(levels)
-        self.probs = Bootstrap._get_probs(self.alphas)
+        self.probs = Bootstrap._get_probs(self.alphas)[0]
         self.results = {}
 
     @staticmethod
@@ -32,8 +32,8 @@ class Bootstrap:
         return 1 - levels
 
     @staticmethod
-    def _get_probs(alphas: np.array) -> list:
-        return list(alphas / 2) + list(1 - alphas / 2)
+    def _get_probs(alphas: np.array) -> tuple:
+        return list(alphas / 2) + list(1 - alphas / 2), list(alphas / 2), list(1 - alphas / 2)
 
     def _get_dimensions(self, t0: Union[int, float, np.array], varnames: Optional[list]) -> None:
 
@@ -130,14 +130,16 @@ class Bootstrap:
         return bca
 
     def bootstrap_method_results(self, results: list, varnames: list = None):
+
         if results is None:
             return None
 
         method_result = {}
         n_results = len(results)
+        upper_probs = Bootstrap._get_probs(self.alphas)[2]
 
         if varnames is None:
-            varnames = [f'estimate{i}' for i in range(n_results)]
+            varnames = [f'estimate_{i}' for i in range(n_results)]
 
         for varname, result in zip(varnames, results):
             lower = result[0]
@@ -146,7 +148,7 @@ class Bootstrap:
             lower_res = {}
             upper_res = {}
 
-            for low, up, prob in zip(lower, upper, self.probs):
+            for low, up, prob in zip(lower, upper, upper_probs):
                 lower_res[prob] = low
                 upper_res[prob] = up
 
@@ -155,9 +157,9 @@ class Bootstrap:
         return method_result
 
     def estimate(self, X: Union[np.array, np.ndarray, pd.Series, pd.DataFrame], statistic: Callable,
-                 varnames: list, **statistic_kwargs: dict):
+                 varnames: list = None, **statistic_kwargs: dict):
         # placeholder to deal with varnames
-        varnames = None
+
         self.nobs = len(X)
         t0 = statistic(X, **statistic_kwargs)
         t0 = np.array([t0]) if isinstance(t0, np.float64) else t0
@@ -171,4 +173,6 @@ class Bootstrap:
         basic = self.get_basic_interval(t0, bootdist) if "basic" in self.method else None
         bca = self.get_bca_interval(X, bootdist, t0, statistic, statistic_kwargs) if "bca" in self.method else None
 
-        return normal
+        res = self.bootstrap_method_results(bca, varnames)
+
+        return res
