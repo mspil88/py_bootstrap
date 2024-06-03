@@ -128,6 +128,32 @@ class Bootstrap:
             bca[i, 1] = quant[self.nlevels: len(probs)]
 
         return bca
+
+    def bootstrap_method_results(self, results: list, varnames: list = None):
+        if results is None:
+            return None
+
+        method_result = {}
+        n_results = len(results)
+
+        if varnames is None:
+            varnames = [f'estimate{i}' for i in range(n_results)]
+
+        for varname, result in zip(varnames, results):
+            lower = result[0]
+            upper = result[1]
+
+            lower_res = {}
+            upper_res = {}
+
+            for low, up, prob in zip(lower, upper, self.probs):
+                lower_res[prob] = low
+                upper_res[prob] = up
+
+            method_result[varname] = {"lower": lower_res, "upper": upper_res }
+
+        return method_result
+
     def estimate(self, X: Union[np.array, np.ndarray, pd.Series, pd.DataFrame], statistic: Callable,
                  **statistic_kwargs: dict):
         # placeholder to deal with varnames
@@ -140,16 +166,9 @@ class Bootstrap:
 
         bootcov = np.cov(bootdist) if self.nstat > 1 else None
 
-        if "norm" in self.method:
-            normal = self.get_normal_interval(t0, bootse, bootbias)
+        normal = self.get_normal_interval(t0, bootse, bootbias) if "norm" in self.method else None
+        percent = self.get_perc_interval(bootdist) if "perc" in self.method else None
+        basic = self.get_basic_interval(t0, bootdist) if "basic" in self.method else None
+        bca = self.get_bca_interval(X, bootdist, t0, statistic, statistic_kwargs) if "bca" in self.method else None
 
-        if "perc" in self.method:
-            percent = self.get_perc_interval(bootdist)
-
-        if "basic" in self.method:
-            basic = self.get_basic_interval(t0, bootdist)
-
-        if "bca" in self.method:
-            bca = self.get_bca_interval(X, bootdist, t0, statistic, statistic_kwargs)
-
-        return bca
+        return normal
